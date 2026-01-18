@@ -1,50 +1,65 @@
 import polars as pl
-import glob
 import os
 
-def generar_reporte_mensual(data_path="data/"):
-    # 1. Listar todos los archivos .parquet en la carpeta
-    archivos = glob.glob(os.path.join(data_path, "*.parquet"))
+def generar_reporte_mensual():
+    # 1. Obtener la ruta absoluta de la carpeta del proyecto
+    # __file__ es la ruta al script actual (scripts/analysis.py)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Subimos un nivel para llegar a la raíz del proyecto y luego entramos a 'data'
+    data_path = os.path.join(script_dir, "..", "data")
     
-    if not archivos:
-        return "Error: No se encontraron archivos para analizar."
-
-    # 2. Leer todos los archivos a la vez (Lazy para mayor eficiencia)
-    # Polars permite escanear múltiples archivos y tratarlos como uno solo
-    df = pl.scan_parquet(archivos)
-
-    # 3. Lógica de limpieza rápida (basada en tus hallazgos previos)
-    df_clean = df.filter(
-        (pl.col("genero").is_in(["M", "F", "O"])) &  # Limpiar géneros inválidos
-        (pl.col("edad") > 0) &                       # Quitar edades en cero
-        (pl.col("estacion_origen_id").is_not_null()) # Quitar nulos críticos
-    )
-
-    # 4. Cálculos para el reporte
-    # Vamos a calcular: Total de viajes, viajes por género y las 5 estaciones más usadas
-    stats = df_clean.select([
-        pl.len().alias("total_viajes"),
-        pl.col("genero").value_counts(sort=True).head(3).alias("distribucion_genero"),
-    ]).collect()
-
-    top_estaciones = df_clean.group_by("estacion_origen_nombre") \
-        .agg(pl.len().alias("conteo")) \
-        .sort("conteo", descending=True) \
-        .head(5) \
-        .collect()
-
-    # 5. Formatear el resultado como un string para el mail
-    resumen = f"""
-    --- REPORTE OPERATIVO ECOBICI ---
-    Total de viajes en los últimos 13 meses: {stats['total_viajes'][0]:,}
+    # Definimos el patrón de búsqueda de archivos
+    pattern = os.path.join(data_path, "ecobici_*.parquet")
     
-    Distribución por Género:
-    {stats['distribucion_genero'][0]}
-    
-    Top 5 Estaciones de Inicio:
-    {top_estaciones}
-    """
-    return resumen
+    try:
+        # Verificamos si la carpeta existe para dar un error más claro
+        if not os.path.exists(data_path):
+            return f"Error: La carpeta de datos no existe en: {os.path.abspath(data_path)}"
+
+        # 2. Cargar archivos (LazyFrame)
+        query = pl.scan_parquet(pattern)
+        
+        # Transformaciones
+        df = query.with_columns([
+            ((pl.col("fecha_hora_arribo") - pl.col("fecha_hora_retiro")).dt.total_minutes()).alias("duracion_minutos"),
+            pl.col("fecha_hora_retiro").dt.strftime("%Y-%m").alias("mes_anio")
+        ]).filter(
+            (pl.col("duracion_minutos") > 1) & (pl.col("duracion_minutos") < 180)
+        )
+
+        # 3. Ejecutar Cálculos
+        resumen_general = df.select([
+            pl.len().alias("total_viajes"),
+            pl.col("duracion_minutos").mean().alias("promedio_minutos"),
+            pl.col("edad").median().alias("mediana_edad")
+        ]).collect()
+
+        viajes_por_mes = df.group_by("mes_anio").agg(
+            pl.len().alias("viajes")
+        ).sort("mes_anio").collect()
+
+        top_estaciones = df.group_by("estacion_origen_id").agg(
+            pl.len().alias("conteo")
+        ).sort("conteo", descending=True).head(5).collect()
+
+        # 4. Formatear el Reporte
+        reporte = f"""
+        --- REPORTE AUTOMÁTICO ECOBICI ---
+        Periodo analizado: {viajes_por_mes['mes_anio'][0]} a {viajes_por_mes['mes_anio'][-1]}
+        Total de viajes: {resumen_general['total_viajes'][0]:,}
+        Duración promedio: {resumen_general['promedio_minutos'][0]:.2f} min
+        Mediana de edad: {resumen_general['mediana_edad'][0]} años
+
+        Viajes por mes:
+        {viajes_por_mes}
+
+        Top 5 Estaciones (ID):
+        {top_estaciones}
+        """
+        return reporte
+
+    except Exception as e:
+        return f"Error procesando los datos: {e}\nPatrón buscado: {pattern}"
 
 if __name__ == "__main__":
     print(generar_reporte_mensual())
