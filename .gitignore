@@ -1,0 +1,13 @@
+# Ignorar entorno virtual
+venv/
+.venv/
+
+# Ignorar archivos de Python
+__pycache__/
+*.py[cod]
+
+# Ignorar los datos (solo rastreamos la carpeta, no los archivos pesados)
+data/*.parquet
+
+# Permitir que Git vea la carpeta aunque esté vacía (opcional)
+!data/.gitkeep
