@@ -1,23 +1,28 @@
 import requests
 from bs4 import BeautifulSoup
-import os
 import re
 from pathlib import Path
 from urllib.parse import urljoin
 
-# --- CONFIGURACIÓN DE RUTAS DINÁMICAS ---
-# __file__ es la ruta de este script (scripts/update_data.py)
-# .parent es la carpeta 'scripts/', .parent.parent es la raíz del proyecto
+# Configuración de rutas relativas (Portabilidad)
+# __file__ es la ubicación de este script (scripts/update_data.py)
+# .parent.parent sube dos niveles para llegar a la raíz del proyecto (ecobici-project/)
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 
-def obtener_ultimo_mes_local(data_path=DATA_DIR):
-    """Revisa los archivos parquet existentes en la ruta relativa y devuelve el último."""
-    # Aseguramos que la carpeta exista para evitar errores
-    if not data_path.exists():
-        data_path.mkdir(parents=True, exist_ok=True)
-        
-    archivos = sorted(list(data_path.glob("ecobici_*.parquet")))
+def verificar_existencia_local(mes_web):
+    """
+    Verifica si el mes ya existe en la carpeta data, ya sea como
+    CSV original o como Parquet ya procesado.
+    """
+    archivo_csv = DATA_DIR / f"{mes_web}.csv"
+    archivo_parquet = DATA_DIR / f"ecobici_{mes_web}.parquet"
+    
+    return archivo_csv.exists() or archivo_parquet.exists()
+
+def obtener_ultimo_mes_registrado():
+    """Revisa los archivos parquet existentes y devuelve el nombre del último mes."""
+    archivos = sorted(list(DATA_DIR.glob("ecobici_*.parquet")))
     if not archivos:
         return None
     match = re.search(r"(\d{4}-\d{2})", archivos[-1].name)
@@ -26,8 +31,9 @@ def obtener_ultimo_mes_local(data_path=DATA_DIR):
 def buscar_y_descargar_nuevo_csv():
     url_base = "https://ecobici.cdmx.gob.mx/datos-abiertos/"
     dominio = "https://ecobici.cdmx.gob.mx"
-    ultimo_local = obtener_ultimo_mes_local()
-    print(f"Último mes en base de datos local: {ultimo_local}")
+    
+    # Asegurar que la carpeta data exista
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
         response = requests.get(url_base, timeout=15)
@@ -50,13 +56,15 @@ def buscar_y_descargar_nuevo_csv():
             if m:
                 enlaces_validos.append((m.group(1), href))
         
+        # Ordenar por fecha descendente
         enlaces_validos.sort(reverse=True)
         mes_web, url_descarga = enlaces_validos[0]
 
         print(f"Mes más reciente en la web: {mes_web}")
 
-        if ultimo_local and mes_web <= ultimo_local:
-            print(f"✅ El sistema ya está actualizado.")
+        # NUEVA LÓGICA DE VERIFICACIÓN
+        if verificar_existencia_local(mes_web):
+            print(f"✅ El mes {mes_web} ya existe localmente (en .csv o .parquet).")
             return None
 
         print(f"🆕 ¡Nuevo archivo detectado! Descargando {mes_web}...")
@@ -64,16 +72,15 @@ def buscar_y_descargar_nuevo_csv():
         r_file = requests.get(url_descarga, stream=True)
         r_file.raise_for_status()
         
-        # Guardar usando la ruta dinámica
-        nombre_csv = DATA_DIR / f"{mes_web}.csv"
+        ruta_guardado = DATA_DIR / f"{mes_web}.csv"
         
-        with open(nombre_csv, 'wb') as f:
+        with open(ruta_guardado, 'wb') as f:
             for chunk in r_file.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
         
-        print(f"💾 Archivo guardado como: {nombre_csv}")
-        return str(nombre_csv)
+        print(f"💾 Archivo guardado en: {ruta_guardado}")
+        return str(ruta_guardado)
 
     except Exception as e:
         print(f"❌ Error durante la búsqueda/descarga: {e}")
