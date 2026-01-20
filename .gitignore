@@ -1,13 +1,20 @@
-# Ignorar entorno virtual
-venv/
-.venv/
-
-# Ignorar archivos de Python
-__pycache__/
-*.py[cod]
-
-# Ignorar los datos (solo rastreamos la carpeta, no los archivos pesados)
-data/*.parquet
-
 # Permitir que Git vea la carpeta aunque esté vacía (opcional)
 !data/.gitkeep
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.py[cod]
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Datos (el pipeline los descarga, no hace falta subirlos)
+data/*.csv
+data/*.parquet
+
+# IDEs
+.vscode/
+.idea/
