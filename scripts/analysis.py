@@ -1,23 +1,24 @@
 import polars as pl
-import os
+from pathlib import Path
 
 def generar_reporte_mensual():
-    # 1. Obtener la ruta absoluta de la carpeta del proyecto
-    # __file__ es la ruta al script actual (scripts/analysis.py)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Subimos un nivel para llegar a la raíz del proyecto y luego entramos a 'data'
-    data_path = os.path.join(script_dir, "..", "data")
+    # 1. Obtener la ruta de la carpeta del proyecto
+    # Path(__file__) obtiene la ruta del script, .resolve() la hace absoluta
+    script_path = Path(__file__).resolve()
+    # .parent equivale a os.path.dirname; subimos un nivel y entramos a 'data'
+    data_path = script_path.parent.parent / "data"
     
-    # Definimos el patrón de búsqueda de archivos
-    pattern = os.path.join(data_path, "ecobici_*.parquet")
+    # Definimos el patrón de búsqueda
+    pattern = data_path / "ecobici_*.parquet"
     
     try:
-        # Verificamos si la carpeta existe para dar un error más claro
-        if not os.path.exists(data_path):
-            return f"Error: La carpeta de datos no existe en: {os.path.abspath(data_path)}"
+        # Verificamos si la carpeta existe
+        if not data_path.exists():
+            return f"Error: La carpeta de datos no existe en: {data_path.absolute()}"
 
         # 2. Cargar archivos (LazyFrame)
-        query = pl.scan_parquet(pattern)
+        # scan_parquet acepta el objeto Path convertido a string para el glob
+        query = pl.scan_parquet(str(pattern))
         
         # Transformaciones
         df = query.with_columns([
@@ -44,7 +45,7 @@ def generar_reporte_mensual():
 
         # 4. Formatear el Reporte
         reporte = f"""
-        --- REPORTE AUTOMÁTICO ECOBICI ---
+        --- REPORTE AUTOMÁTICO ECOBICI (Pathlib version) ---
         Periodo analizado: {viajes_por_mes['mes_anio'][0]} a {viajes_por_mes['mes_anio'][-1]}
         Total de viajes: {resumen_general['total_viajes'][0]:,}
         Duración promedio: {resumen_general['promedio_minutos'][0]:.2f} min
