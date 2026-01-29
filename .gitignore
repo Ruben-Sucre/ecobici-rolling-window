@@ -18,3 +18,8 @@ data/*.parquet
 # IDEs
 .vscode/
 .idea/
+
+# Pruebas
+tests/__pycache__/
+tests/tmp/
+tests/output/

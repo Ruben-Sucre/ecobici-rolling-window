@@ -1,20 +1,20 @@
-import polars as pl
+from __future__ import annotations
+
 from pathlib import Path
 
-def generar_reporte_mensual():
-    # 1. Obtener la ruta de la carpeta del proyecto
-    # Path(__file__) obtiene la ruta del script, .resolve() la hace absoluta
-    script_path = Path(__file__).resolve()
-    # .parent equivale a os.path.dirname; subimos un nivel y entramos a 'data'
-    data_path = script_path.parent.parent / "data"
-    
-    # Definimos el patrón de búsqueda
-    pattern = data_path / "ecobici_*.parquet"
+import polars as pl
+
+from .utils.paths import get_data_dir
+
+
+def generar_reporte_mensual(data_dir: Path | str | None = None) -> str:
+    base_dir = get_data_dir(data_dir)
+    pattern = base_dir / "ecobici_*.parquet"
     
     try:
         # Verificamos si la carpeta existe
-        if not data_path.exists():
-            return f"Error: La carpeta de datos no existe en: {data_path.absolute()}"
+        if not base_dir.exists():
+            return f"Error: La carpeta de datos no existe en: {base_dir.resolve()}"
 
         # 2. Cargar archivos (LazyFrame)
         # scan_parquet acepta el objeto Path convertido a string para el glob
