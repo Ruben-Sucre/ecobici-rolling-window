@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
-import pytest
 
 from scripts import quality_check
 

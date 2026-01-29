@@ -57,7 +57,7 @@ def ejecutar_control_calidad(
     # Extraer resultados para validación lógica
     res = check.to_dicts()[0]
     
-    print(f"📊 Resumen de Calidad:")
+    print("📊 Resumen de Calidad:")
     print(f"   - Total registros: {res['total_registros']:,}")
     print(f"   - Viajes sospechosos (<1m o >3h): {res['viajes_muy_cortos'] + res['viajes_muy_largos']}")
     print(f"   - Datos de usuario faltantes (edad/género): {res['edades_en_cero'] + res['nulos_genero']}")

@@ -14,7 +14,6 @@ def run_pipeline(data_dir: Path | str | None = None) -> None:
 
     # 1. ACTUALIZACIÓN: Buscar y descargar nuevos datos
     print("Step 1: Buscando actualizaciones en el portal de Datos Abiertos...")
-    nuevo_csv = update_data.buscar_y_descargar_nuevo_csv(base_dir)
     
     # 2. PROCESAMIENTO: Convertir CSVs pendientes a Parquet
     print("\nStep 2: Procesando archivos CSV pendientes...")

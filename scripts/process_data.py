@@ -84,7 +84,7 @@ def main():
 
     for archivo in pendientes:
         if procesar_csv_a_parquet(archivo):
-            print(f"\n💡 El archivo Parquet es ~80% más ligero.")
+            print("\n💡 El archivo Parquet es ~80% más ligero.")
             respuesta = input(f"¿Deseas borrar el original {archivo.name}? (s/n, default: s): ").lower()
             if respuesta in ['s', '', 'si', 'yes']:
                 archivo.unlink()
