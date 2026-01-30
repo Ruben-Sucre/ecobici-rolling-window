@@ -1,27 +1,35 @@
-import polars as pl
-from pathlib import Path
+from __future__ import annotations
+
 import re
+from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+import polars as pl
 
-def obtener_csv_pendientes():
-    csvs = list(DATA_DIR.glob("*.csv"))
+from .utils.paths import get_data_dir
+
+
+def obtener_csv_pendientes(data_dir: Path | str | None = None) -> list[Path]:
+    target_dir = get_data_dir(data_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    csvs = list(target_dir.glob("*.csv"))
     pendientes = []
     for archivo_csv in csvs:
         match = re.search(r"(\d{4}-\d{2})", archivo_csv.name)
         if match:
             mes = match.group(1)
-            archivo_parquet = DATA_DIR / f"ecobici_{mes}.parquet"
+            archivo_parquet = target_dir / f"ecobici_{mes}.parquet"
             if not archivo_parquet.exists():
                 pendientes.append(archivo_csv)
     pendientes.sort()
     return pendientes
 
-def procesar_csv_a_parquet(ruta_csv):
+def procesar_csv_a_parquet(ruta_csv: Path | str, data_dir: Path | str | None = None) -> bool:
+    target_dir = get_data_dir(data_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    ruta_csv = Path(ruta_csv)
     match = re.search(r"(\d{4}-\d{2})", ruta_csv.name)
     mes = match.group(1)
-    ruta_salida = DATA_DIR / f"ecobici_{mes}.parquet"
+    ruta_salida = target_dir / f"ecobici_{mes}.parquet"
     
     print(f"⚙️ Procesando: {ruta_csv.name}...")
 
@@ -76,7 +84,7 @@ def main():
 
     for archivo in pendientes:
         if procesar_csv_a_parquet(archivo):
-            print(f"\n💡 El archivo Parquet es ~80% más ligero.")
+            print("\n💡 El archivo Parquet es ~80% más ligero.")
             respuesta = input(f"¿Deseas borrar el original {archivo.name}? (s/n, default: s): ").lower()
             if respuesta in ['s', '', 'si', 'yes']:
                 archivo.unlink()

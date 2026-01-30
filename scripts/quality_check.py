@@ -1,15 +1,28 @@
-import polars as pl
+from __future__ import annotations
+
 from pathlib import Path
 
-# Configuración de rutas
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+import polars as pl
 
-def ejecutar_control_calidad(nombre_archivo_parquet):
+from .utils.paths import get_data_dir
+
+
+def ejecutar_control_calidad(
+    nombre_archivo_parquet: str | Path,
+    data_dir: Path | str | None = None,
+) -> bool:
     """
     Realiza una auditoría de integridad sobre un archivo Parquet específico.
     """
-    ruta_archivo = DATA_DIR / nombre_archivo_parquet
+    base_dir = get_data_dir(data_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = Path(nombre_archivo_parquet)
+    ruta_archivo = (
+        parquet_path
+        if parquet_path.is_absolute()
+        else base_dir / parquet_path
+    )
     
     if not ruta_archivo.exists():
         print(f"⚠️ El archivo {nombre_archivo_parquet} no existe para validación.")
@@ -44,7 +57,7 @@ def ejecutar_control_calidad(nombre_archivo_parquet):
     # Extraer resultados para validación lógica
     res = check.to_dicts()[0]
     
-    print(f"📊 Resumen de Calidad:")
+    print("📊 Resumen de Calidad:")
     print(f"   - Total registros: {res['total_registros']:,}")
     print(f"   - Viajes sospechosos (<1m o >3h): {res['viajes_muy_cortos'] + res['viajes_muy_largos']}")
     print(f"   - Datos de usuario faltantes (edad/género): {res['edades_en_cero'] + res['nulos_genero']}")
