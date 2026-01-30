@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
+# 1. IMPORTANTE: Solo una línea para los módulos de scripts
 from scripts import analysis, process_data, quality_check, update_data
+# 2. El helper de rutas
 from scripts.utils.paths import get_data_dir
-
 
 def run_pipeline(data_dir: Path | str | None = None) -> None:
     base_dir = get_data_dir(data_dir)
