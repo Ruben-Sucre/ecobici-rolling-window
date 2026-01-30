@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 # 1. IMPORTANTE: Solo una línea para los módulos de scripts
-from scripts import analysis, process_data, quality_check, update_data
+from scripts import analysis, process_data, quality_check
 # 2. El helper de rutas
 from scripts.utils.paths import get_data_dir
 
