@@ -1,36 +1,49 @@
-# dashboard.py
 import streamlit as st
-from scripts.analysis import EcobiciEngine # Importamos tu motor
+from .analysis import EcobiciEngine
+
+st.set_page_config(page_title="Dashboard Ecobici", layout="wide") # 1. Mejor uso de pantalla
+
+# 2. LA MAGIA: Cacheamos la carga de datos
+@st.cache_data(ttl=3600) # Se refresca cada hora automáticamente
+def cargar_datos():
+    engine = EcobiciEngine()
+    # Aquí obtenemos el diccionario con los dataframes ya calculados (collect)
+    return engine.run_full_analysis() 
 
 def render_dashboard():
-    st.title("Dashboard Ecobici")
+    st.title("🚲 Monitor de Rendimiento EcoBici")
     
-    # Inicializamos el motor
-    engine = EcobiciEngine()
-    
-    try:
-        # 1. Obtenemos datos base para los filtros (opcional)
-        # 2. Llamamos al análisis (puedes pasar los estados de los sliders aquí)
-        results = engine.run_full_analysis()
-        
-        # 3. Usamos los resultados directamente
-        metrics = results["metrics"]
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total viajes", f"{metrics['total_viajes']:,}")
-        c2.metric("Promedio minutos", f"{metrics['promedio_minutos']:.2f}")
-        
-        # 4. Manejar nulos en la mediana de edad para evitar errores de tipo
-        mediana_edad = metrics.get('mediana_edad')
-        if mediana_edad is not None:
-            c3.metric("Mediana edad", f"{int(mediana_edad)}")
-        else:
-            c3.metric("Mediana edad", "N/A")
-        
-        # 5. Graficamos
-        st.line_chart(results["viajes_por_mes"].to_pandas(), x="mes_anio", y="viajes")
+    # Mensaje de carga elegante
+    with st.spinner('Procesando millones de viajes...'):
+        try:
+            results = cargar_datos() # Usamos la función con caché
+        except Exception as e:
+            st.error(f"Error crítico cargando datos: {e}")
+            st.stop()
 
-    except Exception as e:
-        st.error(f"Error en el motor de análisis: {e}")
+    metrics = results["metrics"]
+    
+    # 3. Layout Responsivo: Usar columnas pero controlando el espacio
+    # En móvil, Streamlit colapsa las columnas automáticamente, 
+    # pero es bueno agruparlas en un contenedor.
+    with st.container():
+        st.subheader("Métricas Clave")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total de Viajes", f"{metrics['total_viajes']:,}")
+        c2.metric("Duración Promedio", f"{metrics['promedio_minutos']:.1f} min")
+        
+        # Manejo de nulos (tu lógica estaba bien, solo la pulimos visualmente)
+        med_edad = metrics.get('mediana_edad')
+        val_edad = f"{int(med_edad)} años" if med_edad else "N/A"
+        c3.metric("Edad Mediana", val_edad)
+
+    st.markdown("---")
+
+    # 4. Gráfica mejorada
+    st.subheader("Tendencia de Uso")
+    # Streamlit maneja pandas mejor para gráficos nativos, tu conversión es correcta
+    df_chart = results["viajes_por_mes"].to_pandas()
+    st.line_chart(df_chart, x="mes_anio", y="viajes", color="#FF4B4B") # Color Ecobici ;)
 
 if __name__ == "__main__":
     render_dashboard()
