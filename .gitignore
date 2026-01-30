@@ -15,11 +15,13 @@ env/
 data/*.csv
 data/*.parquet
 
-# IDEs
+# IDEs y Editores
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Pruebas
+# Pruebas y Temporales
 tests/__pycache__/
 tests/tmp/
 tests/output/
