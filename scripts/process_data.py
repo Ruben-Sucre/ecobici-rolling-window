@@ -28,6 +28,8 @@ def procesar_csv_a_parquet(ruta_csv: Path | str, data_dir: Path | str | None = N
     target_dir.mkdir(parents=True, exist_ok=True)
     ruta_csv = Path(ruta_csv)
     match = re.search(r"(\d{4}-\d{2})", ruta_csv.name)
+    if not match:
+        raise ValueError(f"El nombre del archivo {ruta_csv.name} no contiene un patrón de fecha YYYY-MM")
     mes = match.group(1)
     ruta_salida = target_dir / f"ecobici_{mes}.parquet"
     
