@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+
+# Ensure the repository root is on PYTHONPATH so tests can import `scripts`.
+# This is a minimal, safe adjustment for CI/test environments where top-level
+# package imports may fail.
+project_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(project_root))
 from typing import Iterator
 
 try:
