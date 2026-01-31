@@ -1,49 +1,281 @@
 import streamlit as st
-from .analysis import EcobiciEngine
+import plotly.express as px
 
-st.set_page_config(page_title="Dashboard Ecobici", layout="wide") # 1. Mejor uso de pantalla
+try:
+    from .analysis import EcobiciEngine
+except ImportError:  # Ejecución directa con streamlit
+    from scripts.analysis import EcobiciEngine
 
-# 2. LA MAGIA: Cacheamos la carga de datos
-@st.cache_data(ttl=3600) # Se refresca cada hora automáticamente
-def cargar_datos():
-    engine = EcobiciEngine()
-    # Aquí obtenemos el diccionario con los dataframes ya calculados (collect)
-    return engine.run_full_analysis() 
+st.set_page_config(
+    page_title="Dashboard Ecobici CDMX", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ============================================================================
+# FUNCIONES DE CACHÉ OPTIMIZADAS
+# ============================================================================
+
+@st.cache_resource
+def init_engine():
+    """Inicializa el motor (LazyFrame interno cacheado en memoria)."""
+    return EcobiciEngine()
+
+@st.cache_data(ttl=3600)
+def cargar_metadata(_engine):
+    """Carga metadata para filtros (se ejecuta una sola vez por hora)."""
+    return _engine.get_metadata()
+
+@st.cache_data(ttl=600)
+def ejecutar_analisis(_engine, filtros_tuple):
+    """
+    Ejecuta el análisis con filtros.
+    Usa tuple para filtros porque st.cache_data necesita tipos hashables.
+    """
+    # Convertir tuple de vuelta a dict
+    filtros_dict = dict(filtros_tuple) if filtros_tuple else None
+    return _engine.run_full_analysis(filtros_dict)
+
+
+# ============================================================================
+# SIDEBAR: FILTROS INTERACTIVOS
+# ============================================================================
+
+def render_sidebar(metadata):
+    """Renderiza la barra lateral con todos los filtros."""
+    st.sidebar.title("🔍 Filtros")
+    
+    # FILTRO DE AÑOS
+    anios_disponibles = metadata["anios_disponibles"]
+    anios_seleccionados = st.sidebar.multiselect(
+        "Año(s)",
+        options=anios_disponibles,
+        default=anios_disponibles,  # Todos seleccionados por defecto
+        help="Filtra los viajes por año"
+    )
+    
+    # FILTRO DE GÉNERO
+    generos_disponibles = metadata["generos_disponibles"]
+    generos_seleccionados = st.sidebar.multiselect(
+        "Género",
+        options=generos_disponibles,
+        default=generos_disponibles,
+        help="Filtra por género del usuario"
+    )
+    
+    # FILTRO DE RANGO DE EDAD
+    edad_min = metadata["edad_min"]
+    edad_max = metadata["edad_max"]
+    rango_edad = st.sidebar.slider(
+        "Rango de Edad",
+        min_value=edad_min,
+        max_value=edad_max,
+        value=(edad_min, edad_max),
+        help="Edad del usuario en años"
+    )
+    
+    # Botón para resetear filtros
+    if st.sidebar.button("🔄 Resetear Filtros"):
+        st.rerun()
+    
+    # Construir diccionario de filtros
+    filtros = {
+        "anios": anios_seleccionados if anios_seleccionados else None,
+        "generos": generos_seleccionados if generos_seleccionados else None,
+        "rango_edad": rango_edad
+    }
+    
+    # Convertir a tuple para cache (dict no es hashable)
+    return tuple(filtros.items())
+
+
+# ============================================================================
+# SECCIÓN: MÉTRICAS PRINCIPALES
+# ============================================================================
+
+def render_metricas_principales(metrics):
+    """Renderiza las 4 métricas principales en tarjetas."""
+    st.subheader("📊 Métricas Clave")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "Total de Viajes",
+            f"{metrics['total_viajes']:,}",
+            help="Número total de viajes en el período seleccionado"
+        )
+    
+    with col2:
+        st.metric(
+            "Duración Promedio",
+            f"{metrics['promedio_minutos']:.1f} min",
+            help="Duración promedio de los viajes"
+        )
+    
+    with col3:
+        mediana_edad = metrics.get('mediana_edad')
+        val_edad = f"{int(mediana_edad)} años" if mediana_edad else "N/A"
+        st.metric(
+            "Edad Mediana",
+            val_edad,
+            help="Edad mediana de los usuarios"
+        )
+    
+    with col4:
+        viajes_fallidos = metrics.get('viajes_fallidos', 0)
+        porcentaje_fallidos = (viajes_fallidos / metrics['total_viajes'] * 100) if metrics['total_viajes'] > 0 else 0
+        st.metric(
+            "Viajes Fallidos",
+            f"{viajes_fallidos:,}",
+            delta=f"{porcentaje_fallidos:.2f}%",
+            delta_color="inverse",
+            help="Viajes < 1 min (posibles bicis defectuosas)"
+        )
+
+
+# ============================================================================
+# SECCIÓN: GRÁFICOS PRINCIPALES
+# ============================================================================
+
+def render_graficos_principales(results):
+    """Renderiza los gráficos de tendencia temporal y horas pico."""
+    
+    # FILA 1: Tendencia temporal + Horas pico
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("📈 Tendencia de Uso")
+        df_mes = results["viajes_por_mes"].to_dict(as_series=False)
+        fig_tendencia = px.line(
+            df_mes,
+            x="mes_anio",
+            y="viajes",
+            markers=True,
+            title="Viajes por Mes"
+        )
+        fig_tendencia.update_traces(line_color="#FF4B4B")
+        fig_tendencia.update_layout(
+            xaxis_title="Mes",
+            yaxis_title="Número de Viajes",
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig_tendencia, use_container_width=True)
+    
+    with col2:
+        st.subheader("⏰ Horas Pico")
+        df_horas = results["horas_pico"].to_dict(as_series=False)
+        fig_horas = px.bar(
+            df_horas,
+            x="hora_retiro",
+            y="viajes",
+            title="Distribución Horaria"
+        )
+        fig_horas.update_traces(marker_color="#FF4B4B")
+        fig_horas.update_layout(
+            xaxis_title="Hora del Día",
+            yaxis_title="Viajes",
+            showlegend=False
+        )
+        st.plotly_chart(fig_horas, use_container_width=True)
+
+
+# ============================================================================
+# SECCIÓN: TOP ESTACIONES Y GÉNERO
+# ============================================================================
+
+def render_analisis_secundario(results):
+    """Renderiza Top estaciones y distribución por género."""
+    
+    st.markdown("---")
+    st.subheader("🚉 Análisis de Estaciones y Usuarios")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("**Top 10 Estaciones Origen**")
+        df_origen = results["top_estaciones_origen"].to_dict(as_series=False)
+        fig_origen = px.bar(
+            df_origen,
+            x="viajes",
+            y="estacion_origen_id",
+            orientation="h",
+            color="viajes",
+            color_continuous_scale="Reds"
+        )
+        fig_origen.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_origen, use_container_width=True)
+    
+    with col2:
+        st.markdown("**Top 10 Estaciones Destino**")
+        df_destino = results["top_estaciones_destino"].to_dict(as_series=False)
+        fig_destino = px.bar(
+            df_destino,
+            x="viajes",
+            y="estacion_destino_id",
+            orientation="h",
+            color="viajes",
+            color_continuous_scale="Blues"
+        )
+        fig_destino.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_destino, use_container_width=True)
+    
+    with col3:
+        st.markdown("**Distribución por Género**")
+        df_genero = results["distribucion_genero"].to_dict(as_series=False)
+        fig_genero = px.pie(
+            df_genero,
+            values="viajes",
+            names="genero",
+            color="genero",
+            color_discrete_map={"F": "#FF4B8B", "M": "#4B8BFF", "O": "#B0B0B0"}
+        )
+        st.plotly_chart(fig_genero, use_container_width=True)
+
+
+# ============================================================================
+# FUNCIÓN PRINCIPAL
+# ============================================================================
 
 def render_dashboard():
-    st.title("🚲 Monitor de Rendimiento EcoBici")
+    """Función principal que orquesta todo el dashboard."""
     
-    # Mensaje de carga elegante
-    with st.spinner('Procesando millones de viajes...'):
+    # Header
+    st.title("🚲 Dashboard Ecobici Ciudad de México")
+    st.markdown("Monitor en tiempo real del sistema de bicicletas públicas")
+    
+    # Inicializar motor (cacheado en memoria)
+    engine = init_engine()
+    
+    # Cargar metadata (una sola vez)
+    with st.spinner("Cargando metadata..."):
         try:
-            results = cargar_datos() # Usamos la función con caché
+            metadata = cargar_metadata(engine)
         except Exception as e:
-            st.error(f"Error crítico cargando datos: {e}")
+            st.error(f"❌ Error cargando metadata: {e}")
             st.stop()
-
-    metrics = results["metrics"]
     
-    # 3. Layout Responsivo: Usar columnas pero controlando el espacio
-    # En móvil, Streamlit colapsa las columnas automáticamente, 
-    # pero es bueno agruparlas en un contenedor.
-    with st.container():
-        st.subheader("Métricas Clave")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total de Viajes", f"{metrics['total_viajes']:,}")
-        c2.metric("Duración Promedio", f"{metrics['promedio_minutos']:.1f} min")
-        
-        # Manejo de nulos (tu lógica estaba bien, solo la pulimos visualmente)
-        med_edad = metrics.get('mediana_edad')
-        val_edad = f"{int(med_edad)} años" if med_edad else "N/A"
-        c3.metric("Edad Mediana", val_edad)
-
+    # Renderizar sidebar y obtener filtros
+    filtros_tuple = render_sidebar(metadata)
+    
+    # Ejecutar análisis con filtros (cacheado por 10 minutos)
+    with st.spinner("Procesando datos..."):
+        try:
+            results = ejecutar_analisis(engine, filtros_tuple)
+        except Exception as e:
+            st.error(f"❌ Error en análisis: {e}")
+            st.stop()
+    
+    # Renderizar secciones
+    render_metricas_principales(results["metrics"])
     st.markdown("---")
+    render_graficos_principales(results)
+    render_analisis_secundario(results)
+    
+    # Footer
+    st.markdown("---")
+    st.caption("📊 Datos actualizados automáticamente cada hora | Powered by Polars + Streamlit")
 
-    # 4. Gráfica mejorada
-    st.subheader("Tendencia de Uso")
-    # Streamlit maneja pandas mejor para gráficos nativos, tu conversión es correcta
-    df_chart = results["viajes_por_mes"].to_pandas()
-    st.line_chart(df_chart, x="mes_anio", y="viajes", color="#FF4B4B") # Color Ecobici ;)
 
 if __name__ == "__main__":
     render_dashboard()

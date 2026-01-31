@@ -36,15 +36,15 @@ def ejecutar_control_calidad(
     # Definición de métricas de calidad
     check = df.select([
         # 1. Viajes fuera de rango de tiempo (según tus criterios de análisis)
-        ((pl.col("fecha_hora_arribo") - pl.col("fecha_hora_retiro")).dt.total_minutes() <= 1)
+        ((pl.col("fecha_destino") - pl.col("fecha_origen")).dt.total_minutes() <= 1)
         .sum().alias("viajes_muy_cortos"),
         
-        ((pl.col("fecha_hora_arribo") - pl.col("fecha_hora_retiro")).dt.total_minutes() >= 180)
+        ((pl.col("fecha_destino") - pl.col("fecha_origen")).dt.total_minutes() >= 180)
         .sum().alias("viajes_muy_largos"),
         
         # 2. Integridad de usuarios
         pl.col("genero").is_null().sum().alias("nulos_genero"),
-        pl.col("edad").filter(pl.col("edad") == 0).count().alias("edades_en_cero"),
+        pl.col("edad").is_null().sum().alias("edades_nulas"),
         
         # 3. Integridad de infraestructura
         pl.col("estacion_origen_id").is_null().sum().alias("origen_nulo"),
@@ -60,7 +60,7 @@ def ejecutar_control_calidad(
     print("📊 Resumen de Calidad:")
     print(f"   - Total registros: {res['total_registros']:,}")
     print(f"   - Viajes sospechosos (<1m o >3h): {res['viajes_muy_cortos'] + res['viajes_muy_largos']}")
-    print(f"   - Datos de usuario faltantes (edad/género): {res['edades_en_cero'] + res['nulos_genero']}")
+    print(f"   - Datos de usuario faltantes (edad/género): {res['edades_nulas'] + res['nulos_genero']}")
 
     # Umbral de tolerancia: Si más del 10% de los datos son nulos o inconsistentes, lanzar advertencia
     umbral_error = res['total_registros'] * 0.10

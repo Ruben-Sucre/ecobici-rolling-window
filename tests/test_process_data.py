@@ -39,8 +39,9 @@ def test_procesar_csv_a_parquet_generates_expected_schema(
         "bici_id",
         "estacion_origen_id",
         "estacion_destino_id",
-        "fecha_hora_retiro",
-        "fecha_hora_arribo",
+        "fecha_origen",
+        "fecha_destino",
     ]
     assert df.height == sample_raw_df.height
-    assert df["edad"].dtype == pl.UInt8
+    assert df["edad"].dtype == pl.Int64
+    assert df["genero"].to_list() == ["M", "M", "O"]

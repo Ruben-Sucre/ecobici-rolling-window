@@ -12,13 +12,13 @@ def _write_quality_parquet(path: Path, rows: int = 3) -> Path:
     base_start = datetime(2024, 1, 1, 7, 0, 0)
     df = pl.DataFrame(
         {
-            "genero": ["H", "M", "-"][:rows],
-            "edad": [29, 34, 0][:rows],
+            "genero": ["M", "F", "O"][:rows],
+            "edad": [29, 34, None][:rows],
             "bici_id": [111, 222, 333][:rows],
             "estacion_origen_id": [10, 11, 12][:rows],
             "estacion_destino_id": [20, 21, 22][:rows],
-            "fecha_hora_retiro": [base_start + timedelta(minutes=i * 15) for i in range(rows)],
-            "fecha_hora_arribo": [base_start + timedelta(minutes=i * 15 + 12) for i in range(rows)],
+            "fecha_origen": [base_start + timedelta(minutes=i * 15) for i in range(rows)],
+            "fecha_destino": [base_start + timedelta(minutes=i * 15 + 12) for i in range(rows)],
         }
     )
     df.write_parquet(path)
@@ -39,13 +39,13 @@ def test_ejecutar_control_calidad_detecta_inconsistencias(temp_data_dir: Path) -
     base_start = datetime(2024, 2, 1, 7, 0, 0)
     df = pl.DataFrame(
         {
-            "genero": ["H"] * 8 + [None, None],
+            "genero": ["M"] * 8 + [None, None],
             "edad": [30] * rows,
             "bici_id": list(range(500, 510)),
             "estacion_origen_id": [50] * rows,
             "estacion_destino_id": [60] * rows,
-            "fecha_hora_retiro": [base_start + timedelta(minutes=i * 10) for i in range(rows)],
-            "fecha_hora_arribo": [base_start + timedelta(minutes=i * 10 + 100) for i in range(rows)],
+            "fecha_origen": [base_start + timedelta(minutes=i * 10) for i in range(rows)],
+            "fecha_destino": [base_start + timedelta(minutes=i * 10 + 100) for i in range(rows)],
         }
     )
     df.write_parquet(parquet_path)
