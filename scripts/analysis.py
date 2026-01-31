@@ -2,6 +2,8 @@
 import polars as pl
 from .utils.paths import get_data_dir
 
+SHORT_TRIP_MINUTES = 2.0
+
 
 class EcobiciEngine:
     """Motor de análisis optimizado para consultas dinámicas con Polars LazyFrames."""
@@ -48,13 +50,14 @@ class EcobiciEngine:
                 # Compatibilidad con esquemas antiguos
                 fecha_origen_expr.alias("fecha_origen"),
                 fecha_destino_expr.alias("fecha_destino"),
-                pl.when(genero_expr.is_in(["H", "M", "-"]))
+                pl.when(genero_expr.is_in(["H", "M", "F", "O", "?", "-"]))
                 .then(
                     pl.when(genero_expr == "H").then(pl.lit("M"))
-                    .when(genero_expr == "M").then(pl.lit("F"))
+                    .when(genero_expr == "M").then(pl.lit("M"))
+                    .when(genero_expr == "F").then(pl.lit("F"))
                     .otherwise(pl.lit("O"))
                 )
-                .otherwise(genero_expr)
+                .otherwise(pl.lit("O"))
                 .alias("genero"),
             ])
 
@@ -217,6 +220,31 @@ class EcobiciEngine:
             .agg(pl.struct(["estacion_destino_id", "viajes"]).alias("top_estaciones_destino"))
         )
 
+        top_bicis_viajes_list_lf = (
+            lf.filter(pl.col("bici_id").is_not_null())
+            .group_by("bici_id")
+            .agg(pl.len().alias("viajes"))
+            .sort("viajes", descending=True)
+            .head(10)
+            .with_columns(pl.lit(1).alias("_join_key"))
+            .group_by("_join_key")
+            .agg(pl.struct(["bici_id", "viajes"]).alias("top_bicis_viajes"))
+        )
+
+        top_bicis_viajes_cortos_list_lf = (
+            lf.filter(
+                pl.col("bici_id").is_not_null()
+                & (pl.col("duracion_minutos") < SHORT_TRIP_MINUTES)
+            )
+            .group_by("bici_id")
+            .agg(pl.len().alias("viajes_cortos"))
+            .sort("viajes_cortos", descending=True)
+            .head(10)
+            .with_columns(pl.lit(1).alias("_join_key"))
+            .group_by("_join_key")
+            .agg(pl.struct(["bici_id", "viajes_cortos"]).alias("top_bicis_viajes_cortos"))
+        )
+
         distribucion_genero_list_lf = (
             lf.filter(pl.col("genero").is_in(["F", "M", "O"]))
             .group_by("genero")
@@ -232,6 +260,8 @@ class EcobiciEngine:
             .join(horas_pico_list_lf, on="_join_key", how="left")
             .join(top_estaciones_origen_list_lf, on="_join_key", how="left")
             .join(top_estaciones_destino_list_lf, on="_join_key", how="left")
+            .join(top_bicis_viajes_list_lf, on="_join_key", how="left")
+            .join(top_bicis_viajes_cortos_list_lf, on="_join_key", how="left")
             .join(distribucion_genero_list_lf, on="_join_key", how="left")
             .drop("_join_key")
         )
@@ -264,6 +294,8 @@ class EcobiciEngine:
             "viajes_por_hora": _list_struct_to_df(row.get("horas_pico")),
             "top_estaciones_origen": _list_struct_to_df(row.get("top_estaciones_origen")),
             "top_estaciones_destino": _list_struct_to_df(row.get("top_estaciones_destino")),
+            "top_bicis_viajes": _list_struct_to_df(row.get("top_bicis_viajes")),
+            "top_bicis_viajes_cortos": _list_struct_to_df(row.get("top_bicis_viajes_cortos")),
             "distribucion_genero": _list_struct_to_df(row.get("distribucion_genero")),
         }
 

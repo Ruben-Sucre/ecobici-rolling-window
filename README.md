@@ -90,7 +90,15 @@ streamlit run scripts/dashboard.py
 
 El dashboard se abrirá automáticamente en `http://localhost:8501`
 
-**Nota:** Por ahora el dashboard corre sin sidebar para una vista más limpia.
+
+**Nota importante sobre la visualización de género:**
+El dashboard ahora muestra correctamente la distribución de género en el gráfico de pastel:
+- **M**: Masculino (incluye registros con "M" y "H")
+- **F**: Femenino
+- **O**: Otro/no especificado
+Si observas que algún género no aparece, es porque no hay datos para ese grupo en el periodo seleccionado.
+
+Por ahora el dashboard corre sin sidebar para una vista más limpia.
 
 ### Módulos Individuales
 
