@@ -75,5 +75,21 @@ def run_full_analysis(filters) -> dict          # Orquestador
 
 ---
 
+## 🛠️ Versión 2.1 - Robust Ingest & Error Handling (31 enero 2026)
+
+### 🧩 Cambios
+- Implementa descarga robusta con retries/backoff y timeouts en `scripts/update_data.py`.
+- Añade excepciones específicas en `scripts/utils/exceptions.py`: `DownloadError`, `SchemaValidationError`, `DataValidationError`.
+- Mejora el manejo de errores en `scripts/process_data.py`: valida esquema, detecta datasets vacíos y fechas inválidas; lanza `DataValidationError` en lugar de silenciar errores.
+- Añade tests para cobertura de caminos felices y de fallo (mocking HTTP con `responses` y tests de validación de datos).
+- CI: agrega `ruff` en workflow y marcas pytest `integration`/`performance`.
+
+### Nota
+- `procesar_csv_a_parquet` ahora lanza `DataValidationError` en fallos críticos; los callers deberían capturarla y continuar el pipeline para evitar abortos completos.
+
+---
+
+---
+
 **Autor**: GitHub Copilot + Ruben  
 **Stack**: Python 3.12 | Polars 1.37 | Streamlit 1.41 | Plotly 5.24
