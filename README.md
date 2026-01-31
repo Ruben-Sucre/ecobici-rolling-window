@@ -6,21 +6,23 @@ mensuales de forma eficiente.
 
 ---
 
-## 🔥 Rama Actual: `feature/refactor-engine`
+## 🔥 Rama Actual: `rendimiento`
 
-### Objetivos de esta rama:
-1. **Mejorar el dashboard** - Refactorizar la arquitectura de análisis con la clase `EcobiciEngine` para soportar visualizaciones interactivas con Streamlit
-2. **Desplegar en aplicación web** - Preparar el dashboard para ser desplegado como aplicación web accesible públicamente
+### Qué estamos haciendo en esta rama
 
-### Cambios implementados:
-- ✅ Refactorización de `analysis.py` con arquitectura orientada a objetos
-- ✅ Creación de `dashboard.py` con interfaz interactiva Streamlit
-- ✅ Mantener compatibilidad hacia atrás con función wrapper
-- ✅ Integración de Plotly para gráficos interactivos
-- ✅ Dashboard estable en modo sin sidebar (vista limpia)
-- ✅ Exportación de datos filtrados disponible a nivel de motor
-- 🚧 Mejoras adicionales del dashboard (en progreso)
-- 🚧 Configuración de despliegue web (pendiente)
+Esta rama se centra en optimizar el rendimiento del pipeline y del dashboard para poder ejecutarlos de forma fluida en máquinas con recursos limitados. Las acciones principales en curso son:
+
+- Reducir I/O y memoria: proyectar sólo las columnas necesarias al leer Parquet y evitar cargas completas en RAM.
+- Perfilado dirigido: generar y analizar artefactos de profiling local (`*.prof`, `tmp_profile_data/`) para identificar cuellos de botella.
+- Caché y memoización: emplear `st.cache_resource` y `st.cache_data` en el dashboard para evitar recomputos costosos.
+- Pruebas y estabilidad: ejecutar la suite de tests automáticamente antes de desplegar el dashboard.
+
+### Cambios implementados (resumen):
+- ✅ Optimización de lectura Parquet en `scripts/quality_check.py` (proyección de columnas y lecturas por columna para checks referenciales)
+- ✅ Caché en `scripts/dashboard.py` para reducir recomputos en Streamlit
+- ✅ Inclusión de entradas en `.gitignore` para artefactos de profiling
+- ✅ Tests automatizados y verificados antes de iniciar el dashboard
+- 🚧 Más optimizaciones de memoria y procesamiento en cola (profiling en curso)
 
 ---
 
