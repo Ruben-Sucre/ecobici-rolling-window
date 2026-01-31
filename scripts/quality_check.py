@@ -106,8 +106,9 @@ def ejecutar_control_calidad(
     # Usamos scan_parquet para no cargar todo en RAM innecesariamente
     df = pl.scan_parquet(ruta_archivo)
 
-    # nueva: obtener schema para chequeos de normalización
-    schema = df.schema
+    # nueva: obtener schema para chequeos de normalización (usar collect_schema para
+    # evitar resolver todo el LazyFrame y eliminar el PerformanceWarning)
+    schema = df.collect_schema()
 
     # Chequeo de normalización: detecta columnas denormalizadas
     denorm_cols = _detectar_columnas_denormalizadas(schema)
