@@ -80,6 +80,34 @@ def _chequear_integridad_referencial(ruta_fact: Path, schema: dict[str, object],
 	return issues
 
 
+def _resolver_columnas_fecha(schema: dict[str, object]) -> tuple[str | None, str | None]:
+    """
+    Resuelve las columnas de origen/destino de fecha a usar en los checks.
+    Soporta varias convenciones de nombres (e.g. 'fecha_origen'/'fecha_destino'
+    o 'fecha_hora_retiro'/'fecha_hora_arribo'). Devuelve (col_origen, col_destino)
+    o (None, None) si no encuentra un par apropiado.
+    """
+    cols = set(schema.keys())
+    # pares explícitos en orden de preferencia
+    pairs = [
+        ("fecha_origen", "fecha_destino"),
+        ("fecha_destino", "fecha_origen"),
+        ("fecha_hora_retiro", "fecha_hora_arribo"),
+        ("fecha_hora_arribo", "fecha_hora_retiro"),
+    ]
+    for a, b in pairs:
+        if a in cols and b in cols:
+            return a, b
+
+    # heurística: buscar columnas que contengan tokens comunes
+    left = next((c for c in cols if any(tok in c for tok in ("retiro", "origen", "salida", "inicio"))), None)
+    right = next((c for c in cols if any(tok in c for tok in ("arribo", "destino", "llegada", "fin"))), None)
+    if left and right:
+        return left, right
+
+    return None, None
+
+
 def ejecutar_control_calidad(
     nombre_archivo_parquet: str | Path,
     data_dir: Path | str | None = None,
@@ -128,26 +156,39 @@ def ejecutar_control_calidad(
     else:
         print("✅ Integridad referencial mínima verificada (si existen dimensiones).")
 
-    # Definición de métricas de calidad
-    check = df.select([
-        # 1. Viajes fuera de rango de tiempo (según tus criterios de análisis)
-        ((pl.col("fecha_destino") - pl.col("fecha_origen")).dt.total_minutes() <= 1)
-        .sum().alias("viajes_muy_cortos"),
-        
-        ((pl.col("fecha_destino") - pl.col("fecha_origen")).dt.total_minutes() >= 180)
-        .sum().alias("viajes_muy_largos"),
-        
-        # 2. Integridad de usuarios
+    # Resolver columnas de fecha disponibles y construir métricas dinámicamente
+    origen_col, destino_col = _resolver_columnas_fecha(schema)
+
+    exprs = []
+    # 1. Viajes fuera de rango de tiempo (usar columnas resueltas si existen)
+    if origen_col and destino_col:
+        exprs.extend([
+            ((pl.col(destino_col) - pl.col(origen_col)).dt.total_minutes() <= 1).sum().alias("viajes_muy_cortos"),
+            ((pl.col(destino_col) - pl.col(origen_col)).dt.total_minutes() >= 180).sum().alias("viajes_muy_largos"),
+        ])
+    else:
+        # placeholders si no hay columnas de fecha
+        exprs.extend([
+            pl.lit(0).alias("viajes_muy_cortos"),
+            pl.lit(0).alias("viajes_muy_largos"),
+        ])
+
+    # 2. Integridad de usuarios
+    exprs.extend([
         pl.col("genero").is_null().sum().alias("nulos_genero"),
         pl.col("edad").is_null().sum().alias("edades_nulas"),
-        
-        # 3. Integridad de infraestructura
+    ])
+
+    # 3. Integridad de infraestructura
+    exprs.extend([
         pl.col("estacion_origen_id").is_null().sum().alias("origen_nulo"),
         pl.col("estacion_destino_id").is_null().sum().alias("destino_nulo"),
-        
-        # 4. Total de registros
-        pl.len().alias("total_registros")
-    ]).collect()
+    ])
+
+    # 4. Total de registros
+    exprs.append(pl.len().alias("total_registros"))
+
+    check = df.select(exprs).collect()
 
     # Extraer resultados para validación lógica
     res = check.to_dicts()[0]
