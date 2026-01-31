@@ -155,6 +155,9 @@ def render_analisis_secundario(results):
         with col1:
             st.markdown("**Top 10 Estaciones Origen**")
             df_origen = results["top_estaciones_origen"].to_dict(as_series=False)
+            st.markdown("Lista de estaciones y viajes:")
+            for est, viajes in zip(df_origen["estacion_origen_id"], df_origen["viajes"]):
+                st.write(f"Estación {est}: {viajes} viajes")
             fig_origen = px.bar(
                 df_origen,
                 x="viajes",
@@ -169,6 +172,9 @@ def render_analisis_secundario(results):
         with col2:
             st.markdown("**Top 10 Estaciones Destino**")
             df_destino = results["top_estaciones_destino"].to_dict(as_series=False)
+            st.markdown("Lista de estaciones y viajes:")
+            for est, viajes in zip(df_destino["estacion_destino_id"], df_destino["viajes"]):
+                st.write(f"Estación {est}: {viajes} viajes")
             fig_destino = px.bar(
                 df_destino,
                 x="viajes",
@@ -198,6 +204,9 @@ def render_analisis_secundario(results):
         with col4:
             st.markdown("**Top 10 Bicicletas por Viajes**")
             df_bicis = results["top_bicis_viajes"].to_dict(as_series=False)
+            st.markdown("Lista de bicicletas y viajes:")
+            for bici, viajes in zip(df_bicis["bici_id"], df_bicis["viajes"]):
+                st.write(f"Bici {bici}: {viajes} viajes")
             fig_bicis = px.bar(
                 df_bicis,
                 x="viajes",

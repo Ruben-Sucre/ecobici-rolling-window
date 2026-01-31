@@ -2,6 +2,9 @@ import polars as pl
 import time
 from scripts import analysis
 
+import pytest
+
+@pytest.mark.performance
 def test_engine_performance_large(tmp_path):
     # Crear un DataFrame grande (1 millón de filas)
     n = 1_000_000

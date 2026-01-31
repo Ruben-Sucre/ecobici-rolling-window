@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterator
 
-import polars as pl
+try:
+    import polars as pl
+except Exception:  # pragma: no cover - entorno sin polars
+    pl = None
 import pytest
 
 from scripts.utils.paths import get_data_dir
@@ -24,7 +27,9 @@ def temp_data_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def sample_raw_df() -> pl.DataFrame:
+def sample_raw_df():
+    if pl is None:
+        pytest.skip("polars no está instalado en el entorno", allow_module_level=False)
     return pl.DataFrame(
         {
             "Genero_Usuario": ["H", "M", "-"],
@@ -38,3 +43,21 @@ def sample_raw_df() -> pl.DataFrame:
             "Hora_Arribo": ["07:25:00", "08:25:00", "09:50:00"],
         }
     )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests marked as performance when running in CI."""
+    import os
+    import pytest
+
+    if os.getenv("CI") == "true":
+        skip_perf = pytest.mark.skip(reason="Skip performance tests on CI")
+        for item in items:
+            if "performance" in item.keywords:
+                item.add_marker(skip_perf)
+
+
+def pytest_configure(config):
+    """Register custom markers to avoid PytestUnknownMarkWarning."""
+    config.addinivalue_line("markers", "integration: integration tests that touch external resources")
+    config.addinivalue_line("markers", "performance: performance/benchmark tests")

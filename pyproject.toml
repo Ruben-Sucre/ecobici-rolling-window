@@ -6,4 +6,5 @@ target-version = "py310"
 pythonpath = ["."]
 markers = [
 	"integration: pruebas que tocan recursos externos",
+	"performance: pruebas de rendimiento que pueden ser largas",
 ]

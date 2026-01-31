@@ -12,6 +12,7 @@ import polars as pl
 from .utils.paths import get_data_dir
 
 logger = logging.getLogger(__name__)
+from .utils.exceptions import DataValidationError, SchemaValidationError
 
 
 def obtener_csv_pendientes(data_dir: Path | str | None = None) -> list[Path]:
@@ -110,7 +111,8 @@ def _mapear_columnas(encabezado: list[str]) -> dict[str, str]:
     faltantes = _REQUIRED_COLUMNS - set(renombres.values())
     if faltantes:
         faltantes_texto = ", ".join(sorted(faltantes))
-        raise ValueError(f"Faltan columnas requeridas: {faltantes_texto}")
+        from .utils.exceptions import SchemaValidationError
+        raise SchemaValidationError(f"Faltan columnas requeridas: {faltantes_texto}")
 
     return renombres
 
@@ -155,6 +157,11 @@ def procesar_csv_a_parquet(ruta_csv: Path | str, data_dir: Path | str | None = N
 
         df = df.rename(renombres)
 
+        # Validación: DataFrame no vacío
+        if df.height == 0:
+            logger.error("Dataset vacío: %s", ruta_csv)
+            raise DataValidationError("Dataset vacío")
+
         genero_normalizado = (
             pl.col("genero")
             .cast(pl.Utf8, strict=False)
@@ -195,13 +202,28 @@ def procesar_csv_a_parquet(ruta_csv: Path | str, data_dir: Path | str | None = N
             pl.col("fecha_destino"),
         ])
 
+        # Validación: fechas de origen/destino no todas inválidas
+        if df_limpio.filter(pl.col("fecha_origen").is_not_null()).height == 0:
+            logger.error("Todas las fechas de origen son inválidas en: %s", ruta_csv)
+            raise DataValidationError("Todas las fechas de origen son inválidas")
+        if df_limpio.filter(pl.col("fecha_destino").is_not_null()).height == 0:
+            logger.error("Todas las fechas de destino son inválidas en: %s", ruta_csv)
+            raise DataValidationError("Todas las fechas de destino son inválidas")
+
         df_limpio.write_parquet(ruta_salida, compression="snappy")
         logger.info("✅ Convertido con éxito: %s", ruta_salida.name)
         return True
 
-    except Exception as e:
-        logger.error("❌ Error procesando %s: %s", ruta_csv.name, e)
-        return False
+    except (ValueError, SchemaValidationError) as e:
+        # Si el error viene de mapa de columnas, promover a DataValidationError
+        if isinstance(e, SchemaValidationError):
+            logger.error("Error de esquema procesando %s: %s", ruta_csv.name, e)
+            raise DataValidationError("Esquema inválido") from e
+        logger.error("Error de validación procesando %s: %s", ruta_csv.name, e)
+        raise DataValidationError("Validación de datos falló") from e
+    except OSError as e:
+        logger.error("Error de IO procesando %s: %s", ruta_csv.name, e)
+        raise
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Procesamiento de CSV a Parquet")
