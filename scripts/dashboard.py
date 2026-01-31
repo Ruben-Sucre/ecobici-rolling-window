@@ -192,6 +192,41 @@ def render_analisis_secundario(results):
             )
             st.plotly_chart(fig_genero, use_container_width=True)
 
+        st.markdown("---")
+        col4, col5 = st.columns(2)
+
+        with col4:
+            st.markdown("**Top 10 Bicicletas por Viajes**")
+            df_bicis = results["top_bicis_viajes"].to_dict(as_series=False)
+            fig_bicis = px.bar(
+                df_bicis,
+                x="viajes",
+                y="bici_id",
+                orientation="h",
+                color="viajes",
+                color_continuous_scale="Purples"
+            )
+            fig_bicis.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_bicis, use_container_width=True)
+
+        with col5:
+            st.markdown("**Top Bicicletas con Viajes < 2 min**")
+            df_bicis_cortos_raw = results["top_bicis_viajes_cortos"]
+            if df_bicis_cortos_raw.height == 0:
+                st.info("No hay viajes < 2 min en el período seleccionado.")
+            else:
+                df_bicis_cortos = df_bicis_cortos_raw.to_dict(as_series=False)
+                fig_bicis_cortos = px.bar(
+                    df_bicis_cortos,
+                    x="viajes_cortos",
+                    y="bici_id",
+                    orientation="h",
+                    color="viajes_cortos",
+                    color_continuous_scale="Oranges"
+                )
+                fig_bicis_cortos.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_bicis_cortos, use_container_width=True)
+
 
 # ============================================================================
 # FUNCIÓN PRINCIPAL
