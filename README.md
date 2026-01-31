@@ -126,6 +126,18 @@ pytest --cov=scripts
 pytest -m "not integration"
 ```
 
+## 🔒 Archivos ignorados por Git
+
+El repositorio ahora ignora archivos de perfilado y directorios temporales generados durante el profiling para evitar subir artefactos grandes o sensibles al repositorio. Entre ellos:
+
+- `quality.prof`
+- `quality_func.prof`
+- `quality_func2.prof`
+- `tmp_profile_data/`
+- `tmp_profile_data2/`
+
+Estos archivos se usan localmente para análisis de rendimiento y no forman parte del código fuente del proyecto.
+
 ## 🛠️ Tecnologías
 
 | Tecnología | Uso |
