@@ -78,13 +78,10 @@ def render_metricas_principales(metrics):
         )
     
     with col4:
-        viajes_fallidos = metrics.get('viajes_fallidos', 0)
-        porcentaje_fallidos = (viajes_fallidos / metrics['total_viajes'] * 100) if metrics['total_viajes'] > 0 else 0
+        porcentaje_fallidos = metrics.get("porcentaje_viajes_fallidos", 0.0)
         st.metric(
-            "Viajes Fallidos",
-            f"{viajes_fallidos:,}",
-            delta=f"{porcentaje_fallidos:.2f}%",
-            delta_color="inverse",
+            "% Viajes Fallidos",
+            f"{porcentaje_fallidos:.2f}%",
             help="Viajes < 1 min (posibles bicis defectuosas)"
         )
 
@@ -119,7 +116,7 @@ def render_graficos_principales(results):
     
     with col2:
         st.subheader("⏰ Horas Pico")
-        df_horas = results["horas_pico"].to_dict(as_series=False)
+        df_horas = results["viajes_por_hora"].to_dict(as_series=False)
         fig_horas = px.bar(
             df_horas,
             x="hora_retiro",
@@ -141,51 +138,48 @@ def render_graficos_principales(results):
 
 def render_analisis_secundario(results):
     """Renderiza Top estaciones y distribución por género."""
-    
-    st.markdown("---")
-    st.subheader("🚉 Análisis de Estaciones y Usuarios")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("**Top 10 Estaciones Origen**")
-        df_origen = results["top_estaciones_origen"].to_dict(as_series=False)
-        fig_origen = px.bar(
-            df_origen,
-            x="viajes",
-            y="estacion_origen_id",
-            orientation="h",
-            color="viajes",
-            color_continuous_scale="Reds"
-        )
-        fig_origen.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig_origen, use_container_width=True)
-    
-    with col2:
-        st.markdown("**Top 10 Estaciones Destino**")
-        df_destino = results["top_estaciones_destino"].to_dict(as_series=False)
-        fig_destino = px.bar(
-            df_destino,
-            x="viajes",
-            y="estacion_destino_id",
-            orientation="h",
-            color="viajes",
-            color_continuous_scale="Blues"
-        )
-        fig_destino.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig_destino, use_container_width=True)
-    
-    with col3:
-        st.markdown("**Distribución por Género**")
-        df_genero = results["distribucion_genero"].to_dict(as_series=False)
-        fig_genero = px.pie(
-            df_genero,
-            values="viajes",
-            names="genero",
-            color="genero",
-            color_discrete_map={"F": "#FF4B8B", "M": "#4B8BFF", "O": "#B0B0B0"}
-        )
-        st.plotly_chart(fig_genero, use_container_width=True)
+    with st.expander("🚉 Top Estaciones y Perfil de Usuarios", expanded=False):
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.markdown("**Top 10 Estaciones Origen**")
+            df_origen = results["top_estaciones_origen"].to_dict(as_series=False)
+            fig_origen = px.bar(
+                df_origen,
+                x="viajes",
+                y="estacion_origen_id",
+                orientation="h",
+                color="viajes",
+                color_continuous_scale="Reds"
+            )
+            fig_origen.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_origen, use_container_width=True)
+
+        with col2:
+            st.markdown("**Top 10 Estaciones Destino**")
+            df_destino = results["top_estaciones_destino"].to_dict(as_series=False)
+            fig_destino = px.bar(
+                df_destino,
+                x="viajes",
+                y="estacion_destino_id",
+                orientation="h",
+                color="viajes",
+                color_continuous_scale="Blues"
+            )
+            fig_destino.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_destino, use_container_width=True)
+
+        with col3:
+            st.markdown("**Distribución por Género**")
+            df_genero = results["distribucion_genero"].to_dict(as_series=False)
+            fig_genero = px.pie(
+                df_genero,
+                values="viajes",
+                names="genero",
+                color="genero",
+                color_discrete_map={"F": "#FF4B8B", "M": "#4B8BFF", "O": "#B0B0B0"}
+            )
+            st.plotly_chart(fig_genero, use_container_width=True)
 
 
 # ============================================================================

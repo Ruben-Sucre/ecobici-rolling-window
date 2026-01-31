@@ -250,11 +250,18 @@ class EcobiciEngine:
             "mediana_edad": row["mediana_edad"] or 0.0,
             "viajes_fallidos": int(row["viajes_fallidos"] or 0),
         }
+        total_viajes = metrics["total_viajes"]
+        metrics["porcentaje_viajes_fallidos"] = (
+            (metrics["viajes_fallidos"] / total_viajes) * 100
+            if total_viajes > 0
+            else 0.0
+        )
 
         return {
             "metrics": metrics,
             "viajes_por_mes": _list_struct_to_df(row.get("viajes_por_mes")),
             "horas_pico": _list_struct_to_df(row.get("horas_pico")),
+            "viajes_por_hora": _list_struct_to_df(row.get("horas_pico")),
             "top_estaciones_origen": _list_struct_to_df(row.get("top_estaciones_origen")),
             "top_estaciones_destino": _list_struct_to_df(row.get("top_estaciones_destino")),
             "distribucion_genero": _list_struct_to_df(row.get("distribucion_genero")),
