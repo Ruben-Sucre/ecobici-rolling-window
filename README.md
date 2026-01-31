@@ -17,6 +17,8 @@ mensuales de forma eficiente.
 - ✅ Creación de `dashboard.py` con interfaz interactiva Streamlit
 - ✅ Mantener compatibilidad hacia atrás con función wrapper
 - ✅ Integración de Plotly para gráficos interactivos
+- ✅ Dashboard estable en modo sin sidebar (vista limpia)
+- ✅ Exportación de datos filtrados disponible a nivel de motor
 - 🚧 Mejoras adicionales del dashboard (en progreso)
 - 🚧 Configuración de despliegue web (pendiente)
 
@@ -88,6 +90,8 @@ streamlit run scripts/dashboard.py
 
 El dashboard se abrirá automáticamente en `http://localhost:8501`
 
+**Nota:** Por ahora el dashboard corre sin sidebar para una vista más limpia.
+
 ### Módulos Individuales
 
 ```bash
@@ -135,7 +139,8 @@ pytest -m "not integration"
 
 ## 🚧 Roadmap
 
-- [ ] Mejorar dashboard con filtros interactivos (rango de fechas, estaciones)
+- [ ] Reintroducir filtros interactivos (rango de fechas, estaciones)
+- [ ] Exportación CSV desde la UI
 - [ ] Agregar mapas de calor de estaciones más concurridas
 - [ ] Configurar despliegue en Streamlit Cloud / Heroku / Railway
 - [ ] Implementar caché de datos para mejorar rendimiento del dashboard
