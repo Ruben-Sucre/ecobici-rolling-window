@@ -4,12 +4,19 @@ import plotly.express as px
 try:
     from .analysis import EcobiciEngine
 except ImportError:  # Ejecución directa con streamlit
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[1]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
     from scripts.analysis import EcobiciEngine
 
 st.set_page_config(
     page_title="Dashboard Ecobici CDMX", 
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # ============================================================================
@@ -35,58 +42,6 @@ def ejecutar_analisis(_engine, filtros_tuple):
     # Convertir tuple de vuelta a dict
     filtros_dict = dict(filtros_tuple) if filtros_tuple else None
     return _engine.run_full_analysis(filtros_dict)
-
-
-# ============================================================================
-# SIDEBAR: FILTROS INTERACTIVOS
-# ============================================================================
-
-def render_sidebar(metadata):
-    """Renderiza la barra lateral con todos los filtros."""
-    st.sidebar.title("🔍 Filtros")
-    
-    # FILTRO DE AÑOS
-    anios_disponibles = metadata["anios_disponibles"]
-    anios_seleccionados = st.sidebar.multiselect(
-        "Año(s)",
-        options=anios_disponibles,
-        default=anios_disponibles,  # Todos seleccionados por defecto
-        help="Filtra los viajes por año"
-    )
-    
-    # FILTRO DE GÉNERO
-    generos_disponibles = metadata["generos_disponibles"]
-    generos_seleccionados = st.sidebar.multiselect(
-        "Género",
-        options=generos_disponibles,
-        default=generos_disponibles,
-        help="Filtra por género del usuario"
-    )
-    
-    # FILTRO DE RANGO DE EDAD
-    edad_min = metadata["edad_min"]
-    edad_max = metadata["edad_max"]
-    rango_edad = st.sidebar.slider(
-        "Rango de Edad",
-        min_value=edad_min,
-        max_value=edad_max,
-        value=(edad_min, edad_max),
-        help="Edad del usuario en años"
-    )
-    
-    # Botón para resetear filtros
-    if st.sidebar.button("🔄 Resetear Filtros"):
-        st.rerun()
-    
-    # Construir diccionario de filtros
-    filtros = {
-        "anios": anios_seleccionados if anios_seleccionados else None,
-        "generos": generos_seleccionados if generos_seleccionados else None,
-        "rango_edad": rango_edad
-    }
-    
-    # Convertir a tuple para cache (dict no es hashable)
-    return tuple(filtros.items())
 
 
 # ============================================================================
@@ -255,8 +210,8 @@ def render_dashboard():
             st.error(f"❌ Error cargando metadata: {e}")
             st.stop()
     
-    # Renderizar sidebar y obtener filtros
-    filtros_tuple = render_sidebar(metadata)
+    # Sin filtros (sidebar deshabilitado temporalmente)
+    filtros_tuple = None
     
     # Ejecutar análisis con filtros (cacheado por 10 minutos)
     with st.spinner("Procesando datos..."):

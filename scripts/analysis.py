@@ -260,6 +260,32 @@ class EcobiciEngine:
             "distribucion_genero": _list_struct_to_df(row.get("distribucion_genero")),
         }
 
+    def get_filtered_data(
+        self,
+        filters: dict | None = None,
+        columns: list[str] | None = None,
+        limit: int | None = 10000,
+    ) -> pl.DataFrame:
+        """
+        Devuelve datos filtrados listos para exportación.
+
+        - columns: lista opcional de columnas a incluir
+        - limit: máximo de filas a retornar (None para sin límite)
+        """
+        lf = self.get_filtered_query(filters)
+
+        if columns:
+            schema_cols = set(lf.collect_schema().names())
+            selected = [c for c in columns if c in schema_cols]
+            if not selected:
+                raise ValueError("Ninguna columna solicitada existe en el dataset")
+            lf = lf.select(selected)
+
+        if limit is not None:
+            lf = lf.limit(limit)
+
+        return lf.collect()
+
 
 # Función wrapper para mantener compatibilidad con código anterior
 def generar_reporte_mensual(data_dir=None) -> str:
