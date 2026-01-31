@@ -4,16 +4,46 @@ import re
 from pathlib import Path
 from urllib.parse import urljoin
 
+import logging
 import requests
 from bs4 import BeautifulSoup
 
 from .utils.paths import get_data_dir
+from .utils.exceptions import DownloadError
+
+logger = logging.getLogger(__name__)
 
 
-def descargar_con_reintento(url: str, ruta_archivo: Path) -> None:
-    """Placeholder para la lógica de descarga con reintentos."""
-    # ... (tu código de descarga existente)
-    pass
+def descargar_con_reintento(url: str, ruta_archivo: Path, timeout: tuple = (5, 15)) -> None:
+    """Descarga un recurso con reintentos, streaming y timeouts.
+
+    Lanza DownloadError en caso de fallo.
+    """
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    session = requests.Session()
+    retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504], allowed_methods=["GET"])  # type: ignore[arg-type]
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+
+    try:
+        with session.get(url, timeout=timeout, stream=True) as r:
+            r.raise_for_status()
+            ruta_archivo.parent.mkdir(parents=True, exist_ok=True)
+            with ruta_archivo.open("wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+    except requests.exceptions.HTTPError as e:
+        logger.error("HTTP error descargando %s: %s", url, e)
+        raise DownloadError("HTTP error") from e
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        logger.warning("Error de conexión/timeout descargando %s: %s", url, e)
+        raise DownloadError("Connection/Timeout") from e
+    except requests.exceptions.RequestException as e:
+        logger.exception("Error en request al descargar %s", url)
+        raise DownloadError("Request failed") from e
 
 
 def buscar_y_descargar_nuevo_csv(
@@ -34,7 +64,7 @@ def buscar_y_descargar_nuevo_csv(
 
         enlaces = soup.find_all("a", href=re.compile(r".*\.csv$"))
         if not enlaces:
-            print("❌ No se encontraron enlaces CSV.")
+            logger.warning("No se encontraron enlaces CSV en la página: %s", url_base)
             return None
 
         enlaces_validos: list[tuple[str, str]] = []
@@ -47,7 +77,7 @@ def buscar_y_descargar_nuevo_csv(
                 enlaces_validos.append((match.group(1), href))
 
         if not enlaces_validos:
-            print("❌ No se encontraron enlaces con formato YYYY-MM.")
+            logger.warning("No se encontraron enlaces CSV con formato YYYY-MM en: %s", url_base)
             return None
 
         enlaces_validos.sort(reverse=True)
@@ -57,13 +87,17 @@ def buscar_y_descargar_nuevo_csv(
         archivo_parquet = target_dir / f"ecobici_{mes_web}.parquet"
 
         if archivo_parquet.exists() and not force:
-            print(f"✅ El mes {mes_web} ya está procesado.")
+            logger.info("Mes %s ya procesado (%s).", mes_web, archivo_parquet.name)
             return None
 
-        print(f"📡 Descargando datos de {mes_web}...")
-        descargar_con_reintento(url_descarga, ruta_csv)
+        logger.info("Descargando datos de %s desde %s...", mes_web, url_descarga)
+        try:
+            descargar_con_reintento(url_descarga, ruta_csv)
+        except DownloadError as exc:  # pragma: no cover - network error path
+            logger.error("Fallo descargando %s: %s", url_descarga, exc)
+            return None
         return ruta_csv if ruta_csv.exists() else None
 
     except Exception as exc:  # pragma: no cover - logging path
-        print(f"❌ Error en Step 1: {exc}")
+        logger.exception("Error en Step 1: %s", exc)
         return None
