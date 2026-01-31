@@ -48,9 +48,11 @@ def ejecutar_analisis(_engine, filtros_tuple):
 # SECCIÓN: MÉTRICAS PRINCIPALES
 # ============================================================================
 
-def render_metricas_principales(metrics):
+def render_metricas_principales(results):
     """Renderiza las 4 métricas principales en tarjetas."""
     st.subheader("📊 Métricas Clave")
+
+    metrics = results["metrics"]
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -78,11 +80,20 @@ def render_metricas_principales(metrics):
         )
     
     with col4:
-        porcentaje_fallidos = metrics.get("porcentaje_viajes_fallidos", 0.0)
+        df_horas = results["viajes_por_hora"]
+        if df_horas.height > 0:
+            max_row = df_horas.sort("viajes", descending=True).row(0, named=True)
+            hora_pico = f"{int(max_row['hora_retiro']):02d}:00"
+            viajes_pico = int(max_row["viajes"] or 0)
+            delta_text = f"{viajes_pico:,} viajes"
+        else:
+            hora_pico = "N/A"
+            delta_text = None
         st.metric(
-            "% Viajes Fallidos",
-            f"{porcentaje_fallidos:.2f}%",
-            help="Viajes < 1 min (posibles bicis defectuosas)"
+            "Hora Pico",
+            hora_pico,
+            delta=delta_text,
+            help="Hora con mayor número de viajes"
         )
 
 
@@ -216,7 +227,7 @@ def render_dashboard():
             st.stop()
     
     # Renderizar secciones
-    render_metricas_principales(results["metrics"])
+    render_metricas_principales(results)
     st.markdown("---")
     render_graficos_principales(results)
     render_analisis_secundario(results)
