@@ -32,3 +32,6 @@ quality_func.prof
 quality_func2.prof
 tmp_profile_data/
 tmp_profile_data2/
+ 
+# Logs
+streamlit.log
