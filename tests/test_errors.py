@@ -1,6 +1,6 @@
 import polars as pl
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from scripts import analysis
 

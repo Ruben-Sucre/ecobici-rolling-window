@@ -5,6 +5,9 @@ from pathlib import Path
 import pytest
 
 from scripts import update_data
+import responses
+import requests
+from scripts.utils.exceptions import DownloadError
 
 
 class DummyResponse:
@@ -64,9 +67,6 @@ def test_buscar_descarga_omite_mes_procesado(monkeypatch, temp_data_dir: Path, f
 
 
 # --- Nuevos tests para descargar_con_reintento ---
-import responses
-import requests
-from scripts.utils.exceptions import DownloadError
 
 
 @responses.activate

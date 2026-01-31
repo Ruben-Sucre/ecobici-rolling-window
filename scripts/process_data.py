@@ -10,9 +10,9 @@ from pathlib import Path
 import polars as pl
 
 from .utils.paths import get_data_dir
+from .utils.exceptions import DataValidationError, SchemaValidationError
 
 logger = logging.getLogger(__name__)
-from .utils.exceptions import DataValidationError, SchemaValidationError
 
 
 def obtener_csv_pendientes(data_dir: Path | str | None = None) -> list[Path]:

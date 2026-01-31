@@ -254,7 +254,7 @@ def render_dashboard():
     # Cargar metadata (una sola vez)
     with st.spinner("Cargando metadata..."):
         try:
-            metadata = cargar_metadata(engine)
+            _metadata = cargar_metadata(engine)
         except Exception as e:
             st.error(f"❌ Error cargando metadata: {e}")
             st.stop()
