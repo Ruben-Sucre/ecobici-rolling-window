@@ -1,14 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sys
-
-# Ensure the repository root is on PYTHONPATH so tests can import `scripts`.
-# This is a minimal, safe adjustment for CI/test environments where top-level
-# package imports may fail.
-project_root = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(project_root))
 from typing import Iterator
+import os
+import sys
 
 try:
     import polars as pl
@@ -16,11 +11,11 @@ except Exception:  # pragma: no cover - entorno sin polars
     pl = None
 import pytest
 
-from scripts.utils.paths import get_data_dir
-
 
 @pytest.fixture(autouse=True)
 def clear_data_dir_cache() -> Iterator[None]:
+    from scripts.utils.paths import get_data_dir
+
     get_data_dir.cache_clear()
     yield
     get_data_dir.cache_clear()
@@ -54,9 +49,6 @@ def sample_raw_df():
 
 def pytest_collection_modifyitems(config, items):
     """Skip tests marked as performance when running in CI."""
-    import os
-    import pytest
-
     if os.getenv("CI") == "true":
         skip_perf = pytest.mark.skip(reason="Skip performance tests on CI")
         for item in items:
@@ -66,5 +58,11 @@ def pytest_collection_modifyitems(config, items):
 
 def pytest_configure(config):
     """Register custom markers to avoid PytestUnknownMarkWarning."""
+    # Ensure tests can import the top-level `scripts` package when pytest is run
+    # from environments that don't include the repo root on `PYTHONPATH`.
+    project_root = Path(__file__).resolve().parents[1]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
     config.addinivalue_line("markers", "integration: integration tests that touch external resources")
     config.addinivalue_line("markers", "performance: performance/benchmark tests")
