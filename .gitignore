@@ -25,3 +25,13 @@ data/*.parquet
 tests/__pycache__/
 tests/tmp/
 tests/output/
+
+# Archivos de perfilado y datos temporales de profiling
+quality.prof
+quality_func.prof
+quality_func2.prof
+tmp_profile_data/
+tmp_profile_data2/
+ 
+# Logs
+streamlit.log
