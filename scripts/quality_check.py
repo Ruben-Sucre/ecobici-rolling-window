@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Mapping, Any
 
 import polars as pl
 
 from .utils.paths import get_data_dir
 
 
-def _detectar_columnas_denormalizadas(schema: dict[str, object]) -> list[str]:
+def _detectar_columnas_denormalizadas(schema: Mapping[str, Any]) -> list[str]:
 
     """
     Detecta columnas que parecen almacenar atributos dimensionales (p. ej. *_nombre, *_descripcion)
@@ -25,7 +26,7 @@ def _detectar_columnas_denormalizadas(schema: dict[str, object]) -> list[str]:
                     denorm.append(col)
     return denorm
 
-def _chequear_integridad_referencial(ruta_fact: Path, schema: dict[str, object], base_dir: Path) -> list[str]:
+def _chequear_integridad_referencial(ruta_fact: Path, schema: Mapping[str, Any], base_dir: Path) -> list[str]:
 
     """
     Para cada columna que termina en _id en la fact table, intenta localizar la dimensión
@@ -81,7 +82,7 @@ def _chequear_integridad_referencial(ruta_fact: Path, schema: dict[str, object],
     return issues
 
 
-def _resolver_columnas_fecha(schema: dict[str, object]) -> tuple[str | None, str | None]:
+def _resolver_columnas_fecha(schema: Mapping[str, Any]) -> tuple[str | None, str | None]:
     """
     Resuelve las columnas de origen/destino de fecha a usar en los checks.
     Soporta varias convenciones de nombres (e.g. 'fecha_origen'/'fecha_destino'
